@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
   build-essential \
   cmake \
   curl \
+  flex \
   frei0r-plugins-dev \
   gawk \
   libfontconfig-dev \
@@ -32,15 +33,16 @@ RUN apt-get update && apt-get install -y \
   libvo-amrwbenc-dev \
   libvorbis-dev \
   libwebp-dev \
-  libxcb1-dev \
   libxcb-shm0-dev \
   libxcb-xfixes0-dev \
+  libxcb1-dev \
   libxvidcore-dev \
   lsb-release \
   pkg-config \
   sudo \
   tar \
   texi2html \
+  yacc \
   yasm \
   && rm -rf /var/lib/apt/lists/*
 

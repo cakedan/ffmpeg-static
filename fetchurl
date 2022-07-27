@@ -13,7 +13,7 @@ CACHE=${CACHE:-1}
 UNPACK=${UNPACK:-1}
 VERBOSE=${VERBOSE:-0}
 
-EXTRACT_DIR=${EXTRACT_DIR:-`pwd`}
+EXTRACT_DIR=${EXTRACT_DIR:-$(pwd)}
 if [ -n "$HOME" ]; then
   CACHE_DIR=${CACHE_DIR:-$HOME/.cache/fetchurl}
 else
@@ -26,22 +26,22 @@ URL=$1
 set -u
 
 stderr () {
-  echo $@ 1>&2
+  echo "$@" 1>&2
 }
 
 sh () {
-  echo $ $@
+  echo $ "$@"
   if [ "$VERBOSE" -ne 0 ]; then
-    $@
+    "$@"
   else
-    $@ >/dev/null 2>&1
+    "$@" >/dev/null 2>&1
   fi
 }
 
 expand_path() {
-  here=`pwd`
-  cd $1
-  echo `pwd -P`
+  here=$(pwd)
+  cd "$1"
+  pwd -P
   cd "$here"
 }
 
@@ -70,7 +70,7 @@ if [ -z "$CACHE_DIR" ] && [ "$CACHE" -ne 0 ]; then
   usage
 fi
 
-filename=`basename "$URL" | sed 's/\?.*//'`
+filename=$(basename "$URL" | sed 's/\?.*//')
 tmp_file="$TMP_DIR/$filename"
 cache_file="$CACHE_DIR/$filename"
 
@@ -97,15 +97,15 @@ if [ "$UNPACK" -ne 0 ]; then
   elif [ "$filename" != "${filename%.tar.xz}" ]; then
     extname=.tar.xz
   else
-    stderr extension of $filename is not supported
+    stderr extension of "$filename" is not supported
     exit 1
   fi
 
-  target_dir=`expand_path "$EXTRACT_DIR"`
+  target_dir=$(expand_path "$EXTRACT_DIR")
   mkdir -p "$target_dir"
   sh cd "$target_dir"
 
-  [ "$REPLACE" -ne 1 ] && [ `uname` = "Linux" ] && tarargs="--skip-old-files" || tarargs=""
+  [ "$REPLACE" -ne 1 ] && [ "$(uname)" = "Linux" ] && tarargs="--skip-old-files" || tarargs=""
   case "$extname" in
     .tar.gz|.tgz)
       sh tar "$tarargs" -xzvf "$cache_file"
@@ -122,4 +122,3 @@ if [ "$UNPACK" -ne 0 ]; then
     ;;
   esac
 fi
-

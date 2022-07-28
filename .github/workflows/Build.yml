@@ -16,8 +16,8 @@ jobs:
       run: |
         ./bin/ffmpeg -version
         ./bin/ffprobe -version
-        ldd bin/ffmpeg
-        ldd bin/ffprobe
+        ldd bin/ffmpeg || true
+        ldd bin/ffprobe || true
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
@@ -25,6 +25,7 @@ jobs:
         path: |
           bin/ffmpeg
           bin/ffprobe
+          target/share/ffmpeg/*.ffpreset
   macOS:
     name: macOS
     runs-on: macos-latest
@@ -47,6 +48,7 @@ jobs:
         path: |
           bin/ffmpeg
           bin/ffprobe
+          target/share/ffmpeg/*.ffpreset
   docker:
     name: Podman
     runs-on: ubuntu-latest
@@ -61,8 +63,8 @@ jobs:
       run: |
         ./bin/ffmpeg -version
         ./bin/ffprobe -version
-        ldd bin/ffmpeg
-        ldd bin/ffprobe
+        ldd bin/ffmpeg || true
+        ldd bin/ffprobe || true
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
@@ -70,3 +72,4 @@ jobs:
         path: |
           bin/ffmpeg
           bin/ffprobe
+          target/share/ffmpeg/*.ffpreset

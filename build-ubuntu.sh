@@ -30,6 +30,7 @@ sudo apt-get -y install \
   libxcb-xfixes0-dev \
   libxcb1-dev \
   libxvidcore-dev \
+  libzstd-dev \
   perl \
   pkg-config \
   sudo \

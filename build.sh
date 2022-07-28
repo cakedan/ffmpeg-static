@@ -3,8 +3,7 @@
 set -e
 set -u
 
-jflag=
-jval=2
+jflag=()
 rebuild=0
 download_only=0
 uname -mpi | grep -qE 'x86|i386|i686' && is_x86=1 || is_x86=0
@@ -13,8 +12,7 @@ while getopts 'j:Bd' OPTION
 do
   case $OPTION in
   j)
-      jflag=1
-      jval="$OPTARG"
+      jflag=(-j "$OPTARG")
       ;;
   B)
       rebuild=1
@@ -29,14 +27,6 @@ do
   esac
 done
 shift $((OPTIND - 1))
-
-if [ "$jflag" ]
-then
-  if [ "$jval" ]
-  then
-    printf "Option -j specified (%d)\n" "$jval"
-  fi
-fi
 
 [ "$rebuild" -eq 1 ] && echo "Reconfiguring existing packages..."
 [ $is_x86 -ne 1 ] && echo "Not using yasm or nasm on non-x86 platform..."
@@ -62,8 +52,8 @@ esac
 #rm -rf "$BUILD_DIR" "$TARGET_DIR"
 mkdir -p "$BUILD_DIR" "$TARGET_DIR" "$DOWNLOAD_DIR" "$BIN_DIR"
 
-#download and extract package
-download(){
+# Download and extract the archive
+download() {
   filename="$1"
   if [ -n "$2" ]; then
     filename="$2"
@@ -220,25 +210,35 @@ download \
 
 [ $download_only -eq 1 ] && exit 0
 
+# Print the message about what library is being built
+building() {
+  echo -e "\e[1;32mBuilding $1...\e[0m"
+}
+
+# Add extra arguments to the `make` calls
+make() {
+  command make ${jflag[@]+"${jflag[@]}"} "$@" >/dev/null
+}
+
 if [ $is_x86 -eq 1 ]; then
-    echo "*** Building yasm ***"
+    building yasm
     cd "$BUILD_DIR"/yasm-*
     [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
-    [ ! -f config.status ] && ./configure --prefix="$TARGET_DIR" --bindir="$BIN_DIR"
-    make -j "$jval"
+    [ ! -f config.status ] && ./configure -q --prefix="$TARGET_DIR" --bindir="$BIN_DIR"
+    make
     make install
 fi
 
 if [ $is_x86 -eq 1 ]; then
-    echo "*** Building nasm ***"
+    building nasm
     cd "$BUILD_DIR"/nasm-*
     [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
-    [ ! -f config.status ] && ./configure --prefix="$TARGET_DIR" --bindir="$BIN_DIR"
-    make -j "$jval"
+    [ ! -f config.status ] && ./configure -q --prefix="$TARGET_DIR" --bindir="$BIN_DIR"
+    make
     make install
 fi
 
-echo "*** Building OpenSSL ***"
+building OpenSSL
 cd "$BUILD_DIR"/openssl-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 if [ "$platform" = "darwin" ]; then
@@ -246,10 +246,10 @@ if [ "$platform" = "darwin" ]; then
 elif [ "$platform" = "linux" ]; then
   PATH="$BIN_DIR:$PATH" ./config --prefix="$TARGET_DIR"
 fi
-PATH="$BIN_DIR:$PATH" make -j "$jval"
+PATH="$BIN_DIR:$PATH" make
 make install
 
-echo "*** Building zlib ***"
+building zlib
 cd "$BUILD_DIR"/zlib-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 if [ "$platform" = "linux" ]; then
@@ -257,41 +257,45 @@ if [ "$platform" = "linux" ]; then
 elif [ "$platform" = "darwin" ]; then
   [ ! -f config.status ] && PATH="$BIN_DIR:$PATH" ./configure --prefix="$TARGET_DIR"
 fi
-PATH="$BIN_DIR:$PATH" make -j "$jval"
+PATH="$BIN_DIR:$PATH" make
 make install
 
-echo "*** Building x264 ***"
+building x264
 cd "$BUILD_DIR"/x264-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
-[ ! -f config.status ] && PATH="$BIN_DIR:$PATH" ./configure --prefix="$TARGET_DIR" --enable-static --disable-shared --disable-opencl --enable-pic
-PATH="$BIN_DIR:$PATH" make -j "$jval"
+[ ! -f config.status ] && PATH="$BIN_DIR:$PATH" ./configure --prefix="$TARGET_DIR" --enable-static --disable-opencl --enable-pic
+PATH="$BIN_DIR:$PATH" make
 make install
 
-echo "*** Building x265 ***"
+building x265
 cd "$BUILD_DIR"/x265*
 cd build/linux
 [ $rebuild -eq 1 ] && find . -mindepth 1 ! -name 'make-Makefiles.bash' -and ! -name 'multilib.sh' -exec rm -r {} +
 PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DENABLE_SHARED:BOOL=OFF -DSTATIC_LINK_CRT:BOOL=ON -DENABLE_CLI:BOOL=OFF ../../source
-sed -i 's/-lgcc_s/-lgcc_eh/g' x265.pc
-make -j "$jval"
+if [ "$platform" = "linux" ]; then
+  sed -i 's/-lgcc_s/-lgcc_eh/g' x265.pc
+elif [ "$platform" = "darwin" ]; then
+  sed -i "" 's/-lgcc_s/-lgcc_eh/g' x265.pc
+fi
+make
 make install
 
-echo "*** Building fdk-aac ***"
+building fdk-aac
 cd "$BUILD_DIR"/fdk-aac-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 autoreconf -fiv
-[ ! -f config.status ] && ./configure --prefix="$TARGET_DIR" --disable-shared
-make -j "$jval"
+[ ! -f config.status ] && ./configure -q --prefix="$TARGET_DIR" --disable-shared
+make
 make install
 
-echo "*** Building harfbuzz ***"
+building harfbuzz
 cd "$BUILD_DIR"/harfbuzz-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
-./configure --prefix="$TARGET_DIR" --disable-shared --enable-static
-make -j "$jval"
+./configure -q --prefix="$TARGET_DIR" --disable-shared --enable-static
+make
 make install
 
-echo "*** Building c2man ***"
+building c2man
 cd "$BUILD_DIR"/c2man-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./Configure -dE
@@ -302,57 +306,57 @@ sh config_h.SH
 sh flatten.SH
 sh Makefile.SH
 make depend
-make -j "$jval"
+make
 make install
 
-echo "*** Building fribidi ***"
+building fribidi
 cd "$BUILD_DIR"/fribidi-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
-./configure --prefix="$TARGET_DIR" --disable-shared --enable-static --disable-docs
-PATH="$BIN_DIR:$PATH" make -j "$jval"
+./configure -q --prefix="$TARGET_DIR" --disable-shared --enable-static --disable-docs
+PATH="$BIN_DIR:$PATH" make "${jflag[@]}"
 make install
 
-echo "*** Building libass ***"
+building libass
 cd "$BUILD_DIR"/libass-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
-./configure --prefix="$TARGET_DIR" --disable-shared
-make -j "$jval"
+./configure -q --prefix="$TARGET_DIR" --disable-shared
+make
 make install
 
-echo "*** Building mp3lame ***"
+building mp3lame
 cd "$BUILD_DIR"/lame-*
 # The lame build script does not recognize aarch64, so need to set it manually
 uname -a | grep -q 'aarch64' && lame_build_target="--build=arm-linux" || lame_build_target=''
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
-[ ! -f config.status ] && ./configure --prefix="$TARGET_DIR" --enable-nasm --disable-shared "$lame_build_target"
+[ ! -f config.status ] && ./configure -q --prefix="$TARGET_DIR" --enable-nasm --disable-shared "$lame_build_target"
 make
 make install
 
-echo "*** Building opus ***"
+building opus
 cd "$BUILD_DIR"/opus-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
-./configure --prefix="$TARGET_DIR" --disable-shared
+./configure -q --prefix="$TARGET_DIR" --disable-shared
 make
 make install
 
-echo "*** Building libvpx ***"
+building libvpx
 cd "$BUILD_DIR"/libvpx-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 [ ! -f config.status ] && PATH="$BIN_DIR:$PATH" ./configure --prefix="$TARGET_DIR" --disable-examples --disable-unit-tests --enable-pic
-PATH="$BIN_DIR:$PATH" make -j "$jval"
+PATH="$BIN_DIR:$PATH" make
 make install
 
-echo "*** Building libsoxr ***"
+building libsoxr
 cd "$BUILD_DIR"/soxr-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off -DWITH_OPENMP:bool=off -DBUILD_TESTS:bool=off
-make -j "$jval"
+make
 make install
 
-echo "*** Building libvidstab ***"
+building libvidstab
 cd "$BUILD_DIR"/vid.stab-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 if [ "$platform" = "linux" ]; then
@@ -361,64 +365,62 @@ elif [ "$platform" = "darwin" ]; then
   sed -i "" "s/vidstab SHARED/vidstab STATIC/" ./CMakeLists.txt
 fi
 PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off
-make -j "$jval"
+make
 make install
 
-echo "*** Building openjpeg ***"
+building openjpeg
 cd "$BUILD_DIR"/openjpeg-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off
-make -j "$jval"
+make
 make install
 
-echo "*** Building zimg ***"
+building zimg
 cd "$BUILD_DIR"/zimg-release-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
-./configure --enable-static  --prefix="$TARGET_DIR" --disable-shared
-make -j "$jval"
+./configure -q --enable-static  --prefix="$TARGET_DIR" --disable-shared
+make
 make install
 
-echo "*** Building libwebp ***"
+building libwebp
 cd "$BUILD_DIR"/libwebp-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
-./configure --prefix="$TARGET_DIR" --disable-shared
-make -j "$jval"
+./configure -q --prefix="$TARGET_DIR" --disable-shared
+make
 make install
 
-echo "*** Building libvorbis ***"
+building libvorbis
 cd "$BUILD_DIR"/vorbis-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
-./configure --prefix="$TARGET_DIR" --disable-shared
-make -j "$jval"
+./configure -q --prefix="$TARGET_DIR" --disable-shared
+make
 make install
 
-echo "*** Building libogg ***"
+building libogg
 cd "$BUILD_DIR"/ogg-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
-./configure --prefix="$TARGET_DIR" --disable-shared
-make -j "$jval"
+./configure -q --prefix="$TARGET_DIR" --disable-shared
+make
 make install
 
-echo "*** Building libspeex ***"
+building libspeex
 cd "$BUILD_DIR"/speex-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
-./configure --prefix="$TARGET_DIR" --disable-shared
-make -j "$jval"
+./configure -q --prefix="$TARGET_DIR" --disable-shared
+make
 make install
 
-# FFMpeg
-echo "*** Building FFmpeg ***"
+building FFmpeg
 cd "$BUILD_DIR"/ffmpeg-*
 [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
-
 if [ "$platform" = "linux" ]; then
   [ ! -f config.status ] && PATH="$BIN_DIR:$PATH" \
-  PKG_CONFIG_PATH="$TARGET_DIR/lib/pkgconfig" ./configure \
+  PKG_CONFIG_PATH="$TARGET_DIR/lib/pkgconfig" ./configure -q \
     --prefix="$TARGET_DIR" \
     --pkg-config-flags="--static" \
     --extra-cflags="-I$TARGET_DIR/include" \
@@ -457,7 +459,7 @@ if [ "$platform" = "linux" ]; then
     --enable-openssl
 elif [ "$platform" = "darwin" ]; then
   [ ! -f config.status ] && PATH="$BIN_DIR:$PATH" \
-  PKG_CONFIG_PATH="${TARGET_DIR}/lib/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig" ./configure \
+  PKG_CONFIG_PATH="${TARGET_DIR}/lib/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig" ./configure -q \
     --cc=/usr/bin/clang \
     --prefix="$TARGET_DIR" \
     --pkg-config-flags="--static" \
@@ -493,8 +495,7 @@ elif [ "$platform" = "darwin" ]; then
     --enable-nonfree \
     --enable-openssl
 fi
-
-PATH="$BIN_DIR:$PATH" make -j "$jval"
+PATH="$BIN_DIR:$PATH" make
 make install
 make distclean
 hash -r

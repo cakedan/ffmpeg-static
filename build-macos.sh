@@ -1,9 +1,11 @@
 #!/bin/bash
 
 brew install \
-    openssl \
     frei0r \
+    nasm \
+    openssl \
     sdl2 \
-    wget
+    wget \
+    yasm
 
 ./build.sh "$@"

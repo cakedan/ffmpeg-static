@@ -1,54 +1,13 @@
-FROM ubuntu:bionic
+FROM ubuntu:22.04
 
-# Basic packages needed to download dependencies and unpack them.
-RUN apt-get update && apt-get install -y \
-  bzip2 \
-  perl \
-  tar \
-  wget \
-  xz-utils \
-  && rm -rf /var/lib/apt/lists/*
-
-# Install packages necessary for compilation.
-RUN apt-get update && apt-get install -y \
-  autoconf \
-  automake \
-  bash \
-  build-essential \
-  cmake \
-  curl \
-  flex \
-  frei0r-plugins-dev \
-  gawk \
-  libfontconfig-dev \
-  libfreetype6-dev \
-  libopencore-amrnb-dev \
-  libopencore-amrwb-dev \
-  libsdl2-dev \
-  libspeex-dev \
-  libtheora-dev \
-  libtool \
-  libva-dev \
-  libvdpau-dev \
-  libvo-amrwbenc-dev \
-  libvorbis-dev \
-  libwebp-dev \
-  libxcb-shm0-dev \
-  libxcb-xfixes0-dev \
-  libxcb1-dev \
-  libxvidcore-dev \
-  lsb-release \
-  pkg-config \
-  sudo \
-  tar \
-  texi2html \
-  yacc \
-  yasm \
-  && rm -rf /var/lib/apt/lists/*
-
-# Copy the build scripts.
-COPY build.sh download.pl env.source fetchurl /ffmpeg-static/
+RUN apt-get update && \
+  apt-get install -y sudo && \
+  rm -rf /var/lib/apt/lists/*
 
 VOLUME /ffmpeg-static
 WORKDIR /ffmpeg-static
-CMD /bin/bash
+
+# Copy the build scripts
+COPY build.sh build-ubuntu.sh download.pl env.source fetchurl .
+
+ENTRYPOINT ["./build-ubuntu.sh"]

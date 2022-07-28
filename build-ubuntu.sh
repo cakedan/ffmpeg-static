@@ -1,10 +1,12 @@
 #!/bin/bash
 
+sudo apt-get update
 sudo apt-get -y install \
   autoconf \
   automake \
   build-essential \
   byacc \
+  bzip2 \
   cmake \
   curl \
   flex \
@@ -28,9 +30,13 @@ sudo apt-get -y install \
   libxcb-xfixes0-dev \
   libxcb1-dev \
   libxvidcore-dev \
+  perl \
   pkg-config \
+  sudo \
   tar \
   texi2html \
+  wget \
+  xz-utils \
   zlib1g-dev
 
 ./build.sh "$@"

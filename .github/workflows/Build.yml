@@ -3,54 +3,8 @@ name: Build
 on: push
 
 jobs:
-  ubuntu:
-    name: Ubuntu
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout source code
-      uses: actions/checkout@v2
-    - name: Compile FFmpeg
-      run: |
-        ./build-ubuntu.sh -v
-    - name: Check the binaries
-      run: |
-        ./bin/ffmpeg -version
-        ./bin/ffprobe -version
-        ldd bin/ffmpeg || true
-        ldd bin/ffprobe || true
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: Ubuntu
-        path: |
-          bin/ffmpeg
-          bin/ffprobe
-          target/share/ffmpeg/*.ffpreset
-  macOS:
-    name: macOS
-    runs-on: macos-latest
-    steps:
-    - name: Checkout source code
-      uses: actions/checkout@v2
-    - name: Compile FFmpeg
-      run: |
-        ./build-macos.sh -v
-    - name: Check the binaries
-      run: |
-        ./bin/ffmpeg -version
-        ./bin/ffprobe -version
-        otool -L bin/ffmpeg
-        otool -L bin/ffprobe
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: macOS
-        path: |
-          bin/ffmpeg
-          bin/ffprobe
-          target/share/ffmpeg/*.ffpreset
-  docker:
-    name: Podman
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
     - name: Checkout source code
@@ -58,7 +12,7 @@ jobs:
     - name: Build the image
       run: podman build --squash-all -t ffmpeg-static .
     - name: Compile FFmpeg
-      run: podman run -v .:/ffmpeg-static:Z ffmpeg-static -v
+      run: podman run -v .:/ffmpeg-static:Z --userns=keep-id ffmpeg-static -v
     - name: Check the binaries
       run: |
         ./bin/ffmpeg -version
@@ -68,8 +22,7 @@ jobs:
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: Podman
+        name: Binaries
         path: |
           bin/ffmpeg
           bin/ffprobe
-          target/share/ffmpeg/*.ffpreset

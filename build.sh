@@ -3,54 +3,32 @@
 set -e
 set -u
 
-jflag=()
-verbose=0
-rebuild=0
-download_only=0
-uname -mpi | grep -qE 'x86|i386|i686' && is_x86=1 || is_x86=0
+verbose=false
+download_only=false
+uname -mpi | grep -qE 'x86|i386|i686' && is_x86=true || is_x86=false
 
-while getopts 'j:vBd' OPTION
+while getopts 'vd' OPTION
 do
   case $OPTION in
-  j)
-      jflag=(-j "$OPTARG")
-      ;;
   v)
-      verbose=1
-      ;;
-  B)
-      rebuild=1
+      verbose=true
       ;;
   d)
-      download_only=1
+      download_only=true
       ;;
   ?)
-      printf "Usage: %s: [-j concurrency_level] (hint: your cores + 20%%) [-B] [-d]\n" "$(basename "$0")" >&2
+      printf "Usage: %s: [-v] [-d]\n" "$(basename "$0")" >&2
       exit 2
       ;;
   esac
 done
 shift $((OPTIND - 1))
 
-[ "$rebuild" -eq 1 ] && echo "Reconfiguring existing packages..."
-[ $is_x86 -ne 1 ] && echo "Not using yasm or nasm on non-x86 platform..."
+[ $is_x86 = false ] && echo "Not using yasm or nasm on non-x86 platform..."
 
 cd "$(dirname "$0")"
 ENV_ROOT=$(pwd)
-. ./env.source
-
-# check operating system
-OS=$(uname)
-platform="unknown"
-
-case $OS in
-  'Darwin')
-    platform='darwin'
-    ;;
-  'Linux')
-    platform='linux'
-    ;;
-esac
+. env.sh
 
 mkdir -p "$BUILD_DIR" "$TARGET_DIR" "$DOWNLOAD_DIR" "$BIN_DIR"
 
@@ -61,20 +39,18 @@ download() {
     filename="$2"
   fi
   ../download.pl "$DOWNLOAD_DIR" "$1" "$filename" "$3" "$4"
-  #disable uncompress
-  REPLACE="$rebuild" CACHE_DIR="$DOWNLOAD_DIR" ../fetchurl "http://cache/$filename"
+  REPLACE="0" CACHE_DIR="$DOWNLOAD_DIR" ../fetchurl "http://cache/$filename"
 }
 
-#this is our working directory
 cd "$BUILD_DIR"
 
-[ $is_x86 -eq 1 ] && download \
+[ $is_x86 = true ] && download \
   "yasm-1.3.0.tar.gz" \
   "" \
   "fc9e586751ff789b34b1f21d572d96af" \
   "http://www.tortall.net/projects/yasm/releases/"
 
-[ $is_x86 -eq 1 ] && download \
+[ $is_x86 = true ] && download \
   "nasm-2.15.05.tar.bz2" \
   "" \
   "b8985eddf3a6b08fc246c14f5889147c" \
@@ -201,26 +177,28 @@ download \
   "efd690ec82772073fd9d3ae83ca615da" \
   "https://www.ffmpeg.org/releases/"
 
-[ $download_only -eq 1 ] && exit 0
+[ $download_only = true ] && exit 0
 
-# Print the message about what library is being built
+# Print the message about what library is
+# being built and enter its build directory
 building() {
   echo -e "\n\e[1;32mBuilding $1...\e[0m\n"
+  cd "$BUILD_DIR"/"$1"*
 }
 
 # Override `make` calls
-if [ $verbose -eq 1 ]; then
+if [ $verbose = true ]; then
   make() {
-    command make ${jflag[@]+"${jflag[@]}"} "$@"
+    command make "$@"
   }
 else
   make() {
-    command make ${jflag[@]+"${jflag[@]}"} "$@" >/dev/null
+    command make "$@" >/dev/null
   }
 fi
 
 # Override `configure` calls
-if [ $verbose -eq 1 ]; then
+if [ $verbose = true ]; then
   configure() {
     ./configure --prefix="$TARGET_DIR" "$@"
   }
@@ -230,180 +208,128 @@ else
   }
 fi
 
-if [ $is_x86 -eq 1 ]; then
+if [ $is_x86 = true ]; then
     building yasm
-    cd "$BUILD_DIR"/yasm-*
-    [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
     [ ! -f config.status ] && configure --bindir="$BIN_DIR"
     make
     make install
 fi
 
-if [ $is_x86 -eq 1 ]; then
+if [ $is_x86 = true ]; then
     building nasm
-    cd "$BUILD_DIR"/nasm-*
-    [ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
     [ ! -f config.status ] && configure --bindir="$BIN_DIR"
     make
     make install
 fi
 
-building OpenSSL
-cd "$BUILD_DIR"/openssl-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
-if [ "$platform" = "darwin" ]; then
-  PATH="$BIN_DIR:$PATH" ./Configure darwin64-x86_64-cc --prefix="$TARGET_DIR"
-elif [ "$platform" = "linux" ]; then
-  PATH="$BIN_DIR:$PATH" ./config --prefix="$TARGET_DIR"
-fi
+building openssl
+PATH="$BIN_DIR:$PATH" ./config --prefix="$TARGET_DIR"
 PATH="$BIN_DIR:$PATH" make
 make install
 
 building zlib
-cd "$BUILD_DIR"/zlib-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 [ ! -f config.status ] && PATH="$BIN_DIR:$PATH" configure
 PATH="$BIN_DIR:$PATH" make
 make install
 
 building x264
-cd "$BUILD_DIR"/x264-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 [ ! -f config.status ] && PATH="$BIN_DIR:$PATH" configure --enable-static --disable-opencl --enable-pic
 PATH="$BIN_DIR:$PATH" make
 make install
 
 building x265
-cd "$BUILD_DIR"/x265*
 cd build/linux
-[ $rebuild -eq 1 ] && find . -mindepth 1 ! -name 'make-Makefiles.bash' -and ! -name 'multilib.sh' -exec rm -r {} +
 PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DENABLE_SHARED:BOOL=OFF -DSTATIC_LINK_CRT:BOOL=ON -DENABLE_CLI:BOOL=OFF ../../source
-if [ "$platform" = "linux" ]; then
-  sed -i 's/-lgcc_s/-lgcc_eh/g' x265.pc
-elif [ "$platform" = "darwin" ]; then
-  sed -i "" 's/-lgcc_s/-lgcc_eh/g' x265.pc
-fi
+sed -i 's/-lgcc_s/-lgcc_eh/g' x265.pc
 make
 make install
 
 building fdk-aac
-cd "$BUILD_DIR"/fdk-aac-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 autoreconf -fiv
 [ ! -f config.status ] && configure --disable-shared
 make
 make install
 
 building harfbuzz
-cd "$BUILD_DIR"/harfbuzz-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 configure --disable-shared --enable-static
 make
 make install
 
 building fribidi
-cd "$BUILD_DIR"/fribidi-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 meson -Dprefix="$TARGET_DIR" -Ddocs=false --default-library=static --backend=ninja build
 ninja -C build
 ninja -C build install
 
 building libass
-cd "$BUILD_DIR"/libass-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
 configure --disable-shared
 make
 make install
 
 building mp3lame
-cd "$BUILD_DIR"/lame-*
 # The lame build script does not recognize aarch64, so need to set it manually
 uname -a | grep -q 'aarch64' && lame_build_target="--build=arm-linux" || lame_build_target=''
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 [ ! -f config.status ] && configure --enable-nasm --disable-shared "$lame_build_target"
 make
 make install
 
 building opus
-cd "$BUILD_DIR"/opus-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
 configure --disable-shared
 make
 make install
 
 building libvpx
-cd "$BUILD_DIR"/libvpx-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 [ ! -f config.status ] && PATH="$BIN_DIR:$PATH" configure --disable-examples --disable-unit-tests --enable-pic
 PATH="$BIN_DIR:$PATH" make
 make install
 
 building libsoxr
-cd "$BUILD_DIR"/soxr-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off -DWITH_OPENMP:bool=off -DBUILD_TESTS:bool=off
 make
 make install
 
 building libvid.stab
-cd "$BUILD_DIR"/vid.stab-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off
 make
 make install
 
 building openjpeg
-cd "$BUILD_DIR"/openjpeg-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off
 make
 make install
 
 building zimg
-cd "$BUILD_DIR"/zimg-release-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
 configure --enable-static --disable-shared
 make
 make install
 
 building libwebp
-cd "$BUILD_DIR"/libwebp-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
 configure --disable-shared
 make
 make install
 
 building libvorbis
-cd "$BUILD_DIR"/vorbis-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
 configure --disable-shared
 make
 make install
 
 building libogg
-cd "$BUILD_DIR"/ogg-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
 configure --disable-shared
 make
 make install
 
 building libspeex
-cd "$BUILD_DIR"/speex-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
 ./autogen.sh
 configure --disable-shared
 make
 make install
 
-building FFmpeg
-cd "$BUILD_DIR"/ffmpeg-*
-[ $rebuild -eq 1 ] && [ -f Makefile ] && make distclean
+building ffmpeg
 FEATURES=(
   --enable-ffplay
   --enable-fontconfig
@@ -435,40 +361,19 @@ FEATURES=(
   --enable-pic
   --enable-version3
 )
-if [ "$platform" = "linux" ]; then
-  if [ ! -f config.status ]; then
-    if ! \
-      PATH="$BIN_DIR:$PATH" \
-      PKG_CONFIG_PATH="$TARGET_DIR/lib/pkgconfig" \
-      configure \
-      "${FEATURES[@]}" \
-      --bindir="$BIN_DIR" \
-      --extra-cflags="-I$TARGET_DIR/include" \
-      --extra-ldexeflags="-static" \
-      --extra-ldflags="-L$TARGET_DIR/lib" \
-      --extra-libs="-lpthread -lm -lz" \
-      --pkg-config-flags="--static"
-    then
-      cat ffbuild/config.log
-    fi
-  fi
-elif [ "$platform" = "darwin" ]; then
-  if [ ! -f config.status ]; then
-    if ! \
-      PATH="$BIN_DIR:$PATH" \
-      PKG_CONFIG_PATH="$TARGET_DIR/lib/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig" \
-      configure \
-      "${FEATURES[@]}" \
-      --bindir="$BIN_DIR" \
-      --cc=/usr/bin/clang \
-      --extra-cflags="-I$TARGET_DIR/include" \
-      --extra-ldexeflags="-Bstatic" \
-      --extra-ldflags="-L$TARGET_DIR/lib" \
-      --pkg-config-flags="--static"
-    then
-      cat ffbuild/config.log
-    fi
-  fi
+if ! \
+  PATH="$BIN_DIR:$PATH" \
+  PKG_CONFIG_PATH="$TARGET_DIR/lib/pkgconfig" \
+  configure \
+  "${FEATURES[@]}" \
+  --bindir="$BIN_DIR" \
+  --extra-cflags="-I$TARGET_DIR/include" \
+  --extra-ldexeflags="-static" \
+  --extra-ldflags="-L$TARGET_DIR/lib" \
+  --extra-libs="-lpthread -lm -lz" \
+  --pkg-config-flags="--static"
+then
+  cat ffbuild/config.log
 fi
 PATH="$BIN_DIR:$PATH" make
 make install

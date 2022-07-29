@@ -31,6 +31,8 @@ sudo apt-get -y install \
   libxcb1-dev \
   libxvidcore-dev \
   libzstd-dev \
+  meson \
+  ninja-build \
   perl \
   pkg-config \
   sudo \

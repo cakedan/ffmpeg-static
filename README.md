@@ -5,23 +5,24 @@ Scripts to make a static build of FFmpeg with many (but not all) latest codecs.
 ## Build
 
 ```bash
-./build.sh [-j <jobs>] [-B] [-d]
+./build.sh [-j <jobs>] [-v] [-B] [-d]
 ```
 
 *or*
 
 ```bash
-./build-ubuntu.sh [-j <jobs>] [-B] [-d]
+./build-ubuntu.sh [-j <jobs>] [-v] [-B] [-d]
 ```
 
 *or*
 
 ```bash
-./build-macos.sh [-j <jobs>] [-B] [-d]
+./build-macos.sh [-j <jobs>] [-v] [-B] [-d]
 ```
 
 Arguments:
-* `-j <jobs>`: Number of jobs to run at the same time;
+* `-j <jobs>`: number of jobs to run at the same time;
+* `-v`: make the build process verbose;
 * `-B`: reconfigure and rebuild all packages;
 * `-d`: download and unpack dependencies, but don't build.
 

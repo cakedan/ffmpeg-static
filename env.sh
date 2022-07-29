@@ -14,4 +14,6 @@ else
   TARGET_DIR="${TARGET_DIR:-$ENV_ROOT/target}"
   DOWNLOAD_DIR="${DOWNLOAD_DIR:-$ENV_ROOT/dl}"
   BIN_DIR="${BIN_DIR:-$ENV_ROOT/bin}"
+  export PATH="$BIN_DIR:$PATH"
+  export PKG_CONFIG_PATH="$TARGET_DIR/lib/pkgconfig:$TARGET_DIR/lib64/pkgconfig"
 fi

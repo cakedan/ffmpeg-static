@@ -10,7 +10,6 @@ RESET="\e[0m"
 
 verbose=false
 download_only=false
-uname -mpi | grep -qE 'x86|i386|i686' && is_x86=true || is_x86=false
 
 while getopts 'vd' OPTION
 do
@@ -29,8 +28,6 @@ do
 done
 shift $((OPTIND - 1))
 
-[ $is_x86 = false ] && echo "Not using yasm or nasm on non-x86 platform..."
-
 cd "$(dirname "$0")"
 ENV_ROOT=$(pwd)
 . env.sh
@@ -40,10 +37,10 @@ mkdir -p "$BUILD_DIR" "$TARGET_DIR" "$DOWNLOAD_DIR" "$BIN_DIR"
 # Download and extract the archive, renaming if necessary
 download() {
   url="$1"
-  filename="${2:-$(basename "$url" .tar.gz | xargs basename -s .tar.xz | xargs basename -s .tar.bz2)}"
+  filename="${2:-$(basename "$url" | sed -r 's/(.*)\.tar\..*/\1/')}"
   checksum="$3"
 
-  archive=$(basename "$url")
+  archive=$filename$(basename "${url}" | sed -r 's/.*\.tar\.(.*)/.tar.\1/')
   archive_path="${DOWNLOAD_DIR}/${archive}"
   builddir_path="${BUILD_DIR}/${filename}"
 
@@ -78,16 +75,6 @@ download() {
 }
 
 cd "$BUILD_DIR"
-
-[ $is_x86 = true ] && download \
-  "http://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz" \
-  "" \
-  "fc9e586751ff789b34b1f21d572d96af"
-
-[ $is_x86 = true ] && download \
-  "https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.bz2" \
-  "" \
-  "b8985eddf3a6b08fc246c14f5889147c"
 
 download \
   "https://github.com/openssl/openssl/archive/openssl-3.0.5.tar.gz" \
@@ -186,6 +173,41 @@ download \
   "2872f3c3bf867dbb0b63d06762f4b493"
 
 download \
+  "https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.14.0.tar.xz" \
+  "" \
+  "e12700a9d522bdfec06b6b7e72646987"
+
+download \
+  "https://github.com/google/brotli/archive/refs/tags/v1.0.9.tar.gz" \
+  "libbrotli-1.0.9" \
+  "c2274f0c7af8470ad514637c35bcee7d"
+
+download \
+  "https://download.savannah.gnu.org/releases/freetype/freetype-2.12.1.tar.xz" \
+  "" \
+  "7f7cd7c706d8e402354305c1c59e3ff2"
+
+download \
+  "https://sourceforge.net/projects/opencore-amr/files/opencore-amr/opencore-amr-0.1.5.tar.gz" \
+  "" \
+  "e0798587b91411cc092aa73091a97dfc"
+
+download \
+  "https://sourceforge.net/projects/opencore-amr/files/vo-amrwbenc/vo-amrwbenc-0.1.3.tar.gz" \
+  "" \
+  "f63bb92bde0b1583cb3cb344c12922e0"
+
+download \
+  "http://downloads.xiph.org/releases/theora/libtheora-1.1.1.tar.bz2" \
+  "" \
+  "292ab65cedd5021d6b7ddd117e07cd8e"
+
+download \
+  "https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.gz" \
+  "" \
+  "5c6c19324608ac491485dbb27d4da517"
+
+download \
   "https://www.ffmpeg.org/releases/ffmpeg-5.1.tar.xz" \
   "" \
   "efd690ec82772073fd9d3ae83ca615da"
@@ -221,45 +243,31 @@ else
   }
 fi
 
-if [ $is_x86 = true ]; then
-    building yasm
-    [ ! -f config.status ] && configure --bindir="$BIN_DIR"
-    make
-    make install
-fi
-
-if [ $is_x86 = true ]; then
-    building nasm
-    [ ! -f config.status ] && configure --bindir="$BIN_DIR"
-    make
-    make install
-fi
-
 building openssl
-PATH="$BIN_DIR:$PATH" ./config --prefix="$TARGET_DIR"
-PATH="$BIN_DIR:$PATH" make
+./config --prefix="$TARGET_DIR"
+make
 make install
 
 building zlib
-[ ! -f config.status ] && PATH="$BIN_DIR:$PATH" configure
-PATH="$BIN_DIR:$PATH" make
+configure
+make
 make install
 
 building libx264
-[ ! -f config.status ] && PATH="$BIN_DIR:$PATH" configure --enable-static --disable-opencl --enable-pic
-PATH="$BIN_DIR:$PATH" make
+configure --enable-static --disable-opencl --enable-pic
+make
 make install
 
 building libx265
 cd build/linux
-PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DENABLE_SHARED:BOOL=OFF -DSTATIC_LINK_CRT:BOOL=ON -DENABLE_CLI:BOOL=OFF ../../source
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DENABLE_SHARED:BOOL=OFF -DSTATIC_LINK_CRT:BOOL=ON -DENABLE_CLI:BOOL=OFF ../../source
 sed -i 's/-lgcc_s/-lgcc_eh/g' x265.pc
 make
 make install
 
 building libfdk-aac
 autoreconf -fiv
-[ ! -f config.status ] && configure --disable-shared
+configure --disable-shared
 make
 make install
 
@@ -273,6 +281,11 @@ meson -Dprefix="$TARGET_DIR" -Ddocs=false --default-library=static --backend=nin
 ninja -C build
 ninja -C build install
 
+building fontconfig
+configure --enable-static --disable-shared
+make
+make install
+
 building libass
 ./autogen.sh
 configure --disable-shared
@@ -282,7 +295,7 @@ make install
 building libmp3lame
 # The lame build script does not recognize aarch64, so need to set it manually
 uname -a | grep -q 'aarch64' && lame_build_target="--build=arm-linux" || lame_build_target=''
-[ ! -f config.status ] && configure --enable-nasm --disable-shared "$lame_build_target"
+configure --enable-nasm --disable-shared "$lame_build_target"
 make
 make install
 
@@ -293,22 +306,22 @@ make
 make install
 
 building libvpx
-[ ! -f config.status ] && PATH="$BIN_DIR:$PATH" configure --disable-examples --disable-unit-tests --enable-pic
-PATH="$BIN_DIR:$PATH" make
+configure --disable-examples --disable-unit-tests --enable-pic
+make
 make install
 
 building libsoxr
-PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off -DWITH_OPENMP:bool=off -DBUILD_TESTS:bool=off
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off -DWITH_OPENMP:bool=off -DBUILD_TESTS:bool=off
 make
 make install
 
 building libvidstab
-PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off
 make
 make install
 
 building libopenjpeg
-PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off
+cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off
 make
 make install
 
@@ -324,13 +337,13 @@ configure --disable-shared
 make
 make install
 
-building libvorbis
+building libogg
 ./autogen.sh
-configure --disable-shared
+configure --enable-static --disable-shared --with-pic
 make
 make install
 
-building libogg
+building libvorbis
 ./autogen.sh
 configure --disable-shared
 make
@@ -342,41 +355,74 @@ configure --disable-shared
 make
 make install
 
+building libbrotli
+mkdir -p out && cd out
+cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off ..
+cmake --build . --config Release --target install
+ln -sf "${TARGET_DIR}/lib64/libbrotlidec-static.a" "${TARGET_DIR}/lib64/libbrotlidec.a"
+ln -sf "${TARGET_DIR}/lib64/libbrotlicommon-static.a" "${TARGET_DIR}/lib64/libbrotlicommon.a"
+
+building freetype
+./autogen.sh
+configure --enable-static --disable-shared
+make
+make install
+
+building opencore-amr
+configure --enable-static --disable-shared
+make
+make install
+
+building vo-amrwbenc
+configure --enable-static --disable-shared
+make
+make install
+
+building libtheora
+./autogen.sh
+configure --enable-static --disable-shared --disable-examples
+make
+make install
+
+building xvidcore
+cd build/generic
+configure
+make
+make install
+
 building ffmpeg
-FEATURES=(
-  --enable-ffplay
-  --enable-fontconfig
-  --enable-frei0r
-  --enable-gpl
-  --enable-libass
-  --enable-libfdk-aac
-  --enable-libfreetype
-  --enable-libfribidi
-  --enable-libmp3lame
-  --enable-libopencore-amrnb
-  --enable-libopencore-amrwb
-  --enable-libopenjpeg
-  --enable-libopus
-  --enable-libsoxr
-  --enable-libspeex
-  --enable-libtheora
-  --enable-libvidstab
-  --enable-libvo-amrwbenc
-  --enable-libvorbis
-  --enable-libvpx
-  --enable-libwebp
-  --enable-libx264
-  --enable-libx265
-  --enable-libxvid
-  --enable-libzimg
-  --enable-nonfree
-  --enable-openssl
-  --enable-pic
-  --enable-version3
+FEATURES=( \
+  --enable-ffplay \
+  --enable-fontconfig \
+  --enable-frei0r \
+  --enable-gpl \
+  --enable-libass \
+  --enable-libfdk-aac \
+  --enable-libfreetype \
+  --enable-libfribidi \
+  --enable-libmp3lame \
+  --enable-libopencore-amrnb \
+  --enable-libopencore-amrwb \
+  --enable-libopenjpeg \
+  --enable-libopus \
+  --enable-libsoxr \
+  --enable-libspeex \
+  --enable-libtheora \
+  --enable-libvidstab \
+  --enable-libvo-amrwbenc \
+  --enable-libvorbis \
+  --enable-libvpx \
+  --enable-libwebp \
+  --enable-libx264 \
+  --enable-libx265 \
+  --enable-libxvid \
+  --enable-libzimg \
+  --enable-nonfree \
+  --enable-openssl \
+  --enable-pic \
+  --enable-version3 \
 )
 if ! \
-  PATH="$BIN_DIR:$PATH" \
-  PKG_CONFIG_PATH="$TARGET_DIR/lib/pkgconfig" \
   configure \
   "${FEATURES[@]}" \
   --bindir="$BIN_DIR" \
@@ -388,7 +434,7 @@ if ! \
 then
   cat ffbuild/config.log
 fi
-PATH="$BIN_DIR:$PATH" make
+make
 make install
 make distclean
 hash -r

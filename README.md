@@ -6,7 +6,7 @@ Scripts to make a static build of FFmpeg with many (but not all) codecs.
 
 ```bash
 podman build --squash-all -t ffmpeg-static .
-podman run -it --rm -v .:/ffmpeg-static:Z --name ffmpeg-static --userns=keep-id ffmpeg-static [-d] [-v]
+podman run -it --rm -v .:/ffmpeg-static:Z --name ffmpeg-static ffmpeg-static [-d] [-v]
 ```
 
 Options:

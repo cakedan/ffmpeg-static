@@ -1,5 +1,5 @@
-build/
-target/
-*.swp
+.bash_history
 bin/
+build/
 dl/
+target/

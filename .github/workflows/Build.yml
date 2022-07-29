@@ -12,13 +12,15 @@ jobs:
     - name: Build the image
       run: podman build --squash-all -t ffmpeg-static .
     - name: Compile FFmpeg
-      run: podman run -v .:/ffmpeg-static:Z --userns=keep-id ffmpeg-static -v
+      run: podman run -v .:/ffmpeg-static:Z ffmpeg-static -v
     - name: Check the binaries
       run: |
         ./bin/ffmpeg -version
         ./bin/ffprobe -version
         ldd bin/ffmpeg || true
         ldd bin/ffprobe || true
+        chmod +x bin/ffmpeg
+        chmod +x bin/ffprobe
     - name: Upload artifacts
       uses: actions/upload-artifact@v3
       with:

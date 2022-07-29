@@ -1,7 +1,12 @@
 #!/bin/bash
 
+# Fail if any command fails
 set -e
-set -u
+
+# Define color codes
+RED="\e[1;31m"
+GREEN="\e[1;32m"
+RESET="\e[0m"
 
 verbose=false
 download_only=false
@@ -32,157 +37,165 @@ ENV_ROOT=$(pwd)
 
 mkdir -p "$BUILD_DIR" "$TARGET_DIR" "$DOWNLOAD_DIR" "$BIN_DIR"
 
-# Download and extract the archive
+# Download and extract the archive, renaming if necessary
 download() {
-  filename="$1"
-  if [ -n "$2" ]; then
-    filename="$2"
+  url="$1"
+  filename="${2:-$(basename "$url" .tar.gz | xargs basename -s .tar.xz | xargs basename -s .tar.bz2)}"
+  checksum="$3"
+
+  archive=$(basename "$url")
+  archive_path="${DOWNLOAD_DIR}/${archive}"
+  builddir_path="${BUILD_DIR}/${filename}"
+
+  _download() {
+      echo -e "${GREEN}> Downloading $url...${RESET}"
+      if ! curl -sfLm 600 -o "${archive_path}" "$url"; then
+        echo -e "Couldn't download the file.\n"
+        exit 1
+      fi
+      echo -e "${GREEN}> Checking the MD5 checksum of $archive...${RESET}"
+      if [ "$(md5sum "${archive_path}" | cut -f 1 -d ' ')" != "$checksum" ]; then
+        echo -e "${RED}Wrong checksum. Exiting.${RESET}"
+        exit 1
+      fi
+      echo -e "${GREEN}> Unpacking $archive...${RESET}"
+      mkdir -p "${builddir_path}"
+      tar --strip-components=1 --overwrite -xf "${archive_path}" -C "${builddir_path}"
+  }
+
+  if [ -f "${archive_path}" ]; then
+    echo -e "${GREEN}> Checking the MD5 checksum of $archive...${RESET}"
+    if [ "$(md5sum "${archive_path}" | cut -f 1 -d ' ')" != "$checksum" ]; then
+      _download
+    else
+      echo -e "${GREEN}> Unpacking $archive...${RESET}"
+      mkdir -p "${builddir_path}"
+      tar --strip-components=1 --overwrite -xf "${archive_path}" -C "${builddir_path}"
+    fi
+  else
+    _download
   fi
-  ../download.pl "$DOWNLOAD_DIR" "$1" "$filename" "$3" "$4"
-  REPLACE="0" CACHE_DIR="$DOWNLOAD_DIR" ../fetchurl "http://cache/$filename"
 }
 
 cd "$BUILD_DIR"
 
 [ $is_x86 = true ] && download \
-  "yasm-1.3.0.tar.gz" \
+  "http://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz" \
   "" \
-  "fc9e586751ff789b34b1f21d572d96af" \
-  "http://www.tortall.net/projects/yasm/releases/"
+  "fc9e586751ff789b34b1f21d572d96af"
 
 [ $is_x86 = true ] && download \
-  "nasm-2.15.05.tar.bz2" \
+  "https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.bz2" \
   "" \
-  "b8985eddf3a6b08fc246c14f5889147c" \
-  "https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/"
+  "b8985eddf3a6b08fc246c14f5889147c"
 
 download \
-  "openssl-3.0.5.tar.gz" \
+  "https://github.com/openssl/openssl/archive/openssl-3.0.5.tar.gz" \
   "" \
-  "22733b9187548b735201fd9f7aa12e71" \
-  "https://github.com/openssl/openssl/archive/"
+  "22733b9187548b735201fd9f7aa12e71"
 
 download \
-  "v1.2.12.tar.gz" \
-  "zlib-1.2.12.tar.gz" \
-  "db5b7326d4e0dbcbd1981b640d495c9b" \
-  "https://github.com/madler/zlib/archive/"
+  "https://github.com/madler/zlib/archive/v1.2.12.tar.gz" \
+  "zlib-1.2.12" \
+  "db5b7326d4e0dbcbd1981b640d495c9b"
 
 download \
-  "x264-stable.tar.gz" \
-  "" \
-  "nil" \
-  "https://code.videolan.org/videolan/x264/-/archive/stable/"
+  "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.tar.gz" \
+  "libx264-stable" \
+  "57bfbd990bea805b44c4785e64c6372f"
 
 download \
-  "x265_3.4.tar.gz" \
-  "x265-3.4.tar.gz" \
-  "e37b91c1c114f8815a3f46f039fe79b5" \
-  "http://download.openpkg.org/components/cache/x265/"
+  "http://download.openpkg.org/components/cache/x265/x265_3.4.tar.gz" \
+  "libx265-3.4" \
+  "e37b91c1c114f8815a3f46f039fe79b5"
 
 download \
-  "v2.0.2.tar.gz" \
-  "fdk-aac-2.0.2.tar.gz" \
-  "b15f56aebd0b4cfe8532b24ccfd8d11e" \
-  "https://github.com/mstorsjo/fdk-aac/archive/"
+  "https://github.com/mstorsjo/fdk-aac/archive/v2.0.2.tar.gz" \
+  "libfdk-aac-2.0.2" \
+  "b15f56aebd0b4cfe8532b24ccfd8d11e"
 
 # libass dependency
 download \
-  "harfbuzz-2.6.7.tar.xz" \
-  "" \
-  "3b884586a09328c5fae76d8c200b0e1c" \
-  "https://www.freedesktop.org/software/harfbuzz/release/"
+  "https://www.freedesktop.org/software/harfbuzz/release/harfbuzz-2.6.7.tar.xz" \
+  "libharfbuzz-2.6.7" \
+  "3b884586a09328c5fae76d8c200b0e1c"
 
 download \
-  "v1.0.12.tar.gz" \
-  "fribidi-1.0.12.tar.gz" \
-  "a7d87e1f323d43685c99614a204ea7e5" \
-  "https://github.com/fribidi/fribidi/archive/"
+  "https://github.com/fribidi/fribidi/archive/v1.0.12.tar.gz" \
+  "libfribidi-1.0.12" \
+  "a7d87e1f323d43685c99614a204ea7e5"
 
 download \
-  "0.16.0.tar.gz" \
-  "libass-0.16.0.tar.gz" \
-  "9603bb71804a27dee6776a8969ecdf1e" \
-  "https://github.com/libass/libass/archive/"
+  "https://github.com/libass/libass/archive/0.16.0.tar.gz" \
+  "libass-0.16.0" \
+  "9603bb71804a27dee6776a8969ecdf1e"
 
 download \
-  "lame-3.100.tar.gz" \
-  "" \
-  "83e260acbe4389b54fe08e0bdbf7cddb" \
-  "http://downloads.sourceforge.net/project/lame/lame/3.100/"
+  "http://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" \
+  "libmp3lame-3.100" \
+  "83e260acbe4389b54fe08e0bdbf7cddb"
 
 download \
-  "v1.3.1.tar.gz" \
-  "opus-1.3.1.tar.gz" \
+  "https://github.com/xiph/opus/archive/v1.3.1.tar.gz" \
+  "libopus-1.3.1" \
   "b27f67923ffcbc8efb4ce7f29cbe3faf" \
-  "https://github.com/xiph/opus/archive/"
 
 download \
-  "v1.12.0.tar.gz" \
-  "vpx-1.12.0.tar.gz" \
-  "10cf85debdd07be719a35ca3bfb8ea64" \
-  "https://github.com/webmproject/libvpx/archive/"
+  "https://github.com/webmproject/libvpx/archive/v1.12.0.tar.gz" \
+  "libvpx-1.12.0" \
+  "10cf85debdd07be719a35ca3bfb8ea64"
 
 download \
-  "soxr-0.1.3-Source.tar.xz" \
-  "soxr-0.1.3.tar.xz" \
-  "3f16f4dcb35b471682d4321eda6f6c08" \
-  "https://sourceforge.net/projects/soxr/files/"
+  "https://sourceforge.net/projects/soxr/files/soxr-0.1.3-Source.tar.xz" \
+  "libsoxr-0.1.3" \
+  "3f16f4dcb35b471682d4321eda6f6c08"
 
 download \
-  "v1.1.0.tar.gz" \
-  "vid.stab-1.1.0.tar.gz" \
-  "633af54b7e2fd5734265ac7488ac263a" \
-  "https://github.com/georgmartius/vid.stab/archive/"
+  "https://github.com/georgmartius/vid.stab/archive/v1.1.0.tar.gz" \
+  "libvidstab-1.1.0" \
+  "633af54b7e2fd5734265ac7488ac263a"
 
 download \
-  "release-3.0.4.tar.gz" \
-  "zimg-3.0.4.tar.gz" \
-  "9ef18426caecf049d3078732411a9802" \
-  "https://github.com/sekrit-twc/zimg/archive/"
+  "https://github.com/sekrit-twc/zimg/archive/release-3.0.4.tar.gz" \
+  "libzimg-3.0.4" \
+  "9ef18426caecf049d3078732411a9802"
 
 download \
-  "v2.5.0.tar.gz" \
-  "openjpeg-2.5.0.tar.gz" \
-  "5cbb822a1203dd75b85639da4f4ecaab" \
-  "https://github.com/uclouvain/openjpeg/archive/"
+  "https://github.com/uclouvain/openjpeg/archive/v2.5.0.tar.gz" \
+  "libopenjpeg-2.5.0" \
+  "5cbb822a1203dd75b85639da4f4ecaab"
 
 download \
-  "v1.2.3.tar.gz" \
-  "libwebp-1.2.3.tar.gz" \
-  "a9d3c93923ab0e5eab649a965b7b2bcd" \
-  "https://github.com/webmproject/libwebp/archive/"
+  "https://github.com/webmproject/libwebp/archive/v1.2.3.tar.gz" \
+  "libwebp-1.2.3" \
+  "a9d3c93923ab0e5eab649a965b7b2bcd"
 
 download \
-  "v1.3.7.tar.gz" \
-  "vorbis-1.3.7.tar.gz" \
-  "689dc495b22c5f08246c00dab35f1dc7" \
-  "https://github.com/xiph/vorbis/archive/"
+  "https://github.com/xiph/vorbis/archive/v1.3.7.tar.gz" \
+  "libvorbis-1.3.7" \
+  "689dc495b22c5f08246c00dab35f1dc7"
 
 download \
-  "v1.3.5.tar.gz" \
-  "ogg-1.3.5.tar.gz" \
-  "52b33b31dfff09a89ad1bc07248af0bd" \
-  "https://github.com/xiph/ogg/archive/"
+  "https://github.com/xiph/ogg/archive/v1.3.5.tar.gz" \
+  "libogg-1.3.5" \
+  "52b33b31dfff09a89ad1bc07248af0bd"
 
 download \
-  "Speex-1.2.1.tar.gz" \
-  "speex-1.2.1.tar.gz" \
-  "2872f3c3bf867dbb0b63d06762f4b493" \
-  "https://github.com/xiph/speex/archive/"
+  "https://github.com/xiph/speex/archive/Speex-1.2.1.tar.gz" \
+  "libspeex-1.2.1" \
+  "2872f3c3bf867dbb0b63d06762f4b493"
 
 download \
-  "ffmpeg-5.1.tar.xz" \
+  "https://www.ffmpeg.org/releases/ffmpeg-5.1.tar.xz" \
   "" \
-  "efd690ec82772073fd9d3ae83ca615da" \
-  "https://www.ffmpeg.org/releases/"
+  "efd690ec82772073fd9d3ae83ca615da"
 
 [ $download_only = true ] && exit 0
 
 # Print the message about what library is
 # being built and enter its build directory
 building() {
-  echo -e "\n\e[1;32mBuilding $1...\e[0m\n"
+  echo -e "\n${GREEN}> Building $1...${RESET}\n"
   cd "$BUILD_DIR"/"$1"*
 }
 
@@ -232,30 +245,30 @@ building zlib
 PATH="$BIN_DIR:$PATH" make
 make install
 
-building x264
+building libx264
 [ ! -f config.status ] && PATH="$BIN_DIR:$PATH" configure --enable-static --disable-opencl --enable-pic
 PATH="$BIN_DIR:$PATH" make
 make install
 
-building x265
+building libx265
 cd build/linux
 PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DENABLE_SHARED:BOOL=OFF -DSTATIC_LINK_CRT:BOOL=ON -DENABLE_CLI:BOOL=OFF ../../source
 sed -i 's/-lgcc_s/-lgcc_eh/g' x265.pc
 make
 make install
 
-building fdk-aac
+building libfdk-aac
 autoreconf -fiv
 [ ! -f config.status ] && configure --disable-shared
 make
 make install
 
-building harfbuzz
+building libharfbuzz
 configure --disable-shared --enable-static
 make
 make install
 
-building fribidi
+building libfribidi
 meson -Dprefix="$TARGET_DIR" -Ddocs=false --default-library=static --backend=ninja build
 ninja -C build
 ninja -C build install
@@ -266,14 +279,14 @@ configure --disable-shared
 make
 make install
 
-building mp3lame
+building libmp3lame
 # The lame build script does not recognize aarch64, so need to set it manually
 uname -a | grep -q 'aarch64' && lame_build_target="--build=arm-linux" || lame_build_target=''
 [ ! -f config.status ] && configure --enable-nasm --disable-shared "$lame_build_target"
 make
 make install
 
-building opus
+building libopus
 ./autogen.sh
 configure --disable-shared
 make
@@ -289,17 +302,17 @@ PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_
 make
 make install
 
-building libvid.stab
+building libvidstab
 PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off
 make
 make install
 
-building openjpeg
+building libopenjpeg
 PATH="$BIN_DIR:$PATH" cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off
 make
 make install
 
-building zimg
+building libzimg
 ./autogen.sh
 configure --enable-static --disable-shared
 make

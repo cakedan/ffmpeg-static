@@ -33,7 +33,6 @@ RUN apt-get update && \
   libzstd-dev \
   meson \
   ninja-build \
-  perl \
   pkg-config \
   sudo \
   tar \
@@ -42,6 +41,9 @@ RUN apt-get update && \
   xz-utils \
   zlib1g-dev && \
   rm -rf /var/lib/apt/lists/*
+
+# Disable passwords for `sudo` users
+RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 VOLUME /ffmpeg-static
 WORKDIR /ffmpeg-static

@@ -1,6 +1,11 @@
 # Description
 
-Scripts to make a static build of [FFmpeg](https://www.ffmpeg.org).
+A script to make a static build of [FFmpeg](https://www.ffmpeg.org).
+
+Git mirrors:
+- [Codeberg](https://codeberg.org/paveloom-f/ffmpeg-static)
+- [GitHub](https://github.com/paveloom-f/ffmpeg-static)
+- [GitLab](https://gitlab.com/paveloom-g/forks/ffmpeg-static)
 
 ## Build
 
@@ -28,7 +33,3 @@ You can then enter the source folders and make the compilation yourself
 cd build/ffmpeg-*
 ./configure --prefix=$TARGET_DIR #...
 ```
-
-## Related projects
-
-* [FFmpeg Static Builds](http://johnvansickle.com/ffmpeg/)

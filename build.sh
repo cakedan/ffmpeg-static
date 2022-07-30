@@ -109,9 +109,9 @@ download \
   "b15f56aebd0b4cfe8532b24ccfd8d11e"
 
 download \
-  "https://www.freedesktop.org/software/harfbuzz/release/harfbuzz-2.6.7.tar.xz" \
-  "libharfbuzz-2.6.7" \
-  "3b884586a09328c5fae76d8c200b0e1c"
+  "https://github.com/harfbuzz/harfbuzz/archive/5.0.1.tar.gz" \
+  "libharfbuzz-5.0.1" \
+  "a0c81d6f16e5018f83a709eb50f934a9"
 
 download \
   "https://github.com/fribidi/fribidi/archive/v1.0.12.tar.gz" \
@@ -278,6 +278,14 @@ configure --disable-shared
 make
 make install
 
+building libbrotli
+mkdir -p out && cd out
+cmake -DBUILD_SHARED_LIBS:bool=off ..
+make
+make install
+ln -sf "${TARGET_DIR}/lib64/libbrotlidec-static.a" "${TARGET_DIR}/lib64/libbrotlidec.a"
+ln -sf "${TARGET_DIR}/lib64/libbrotlicommon-static.a" "${TARGET_DIR}/lib64/libbrotlicommon.a"
+
 building libfreetype
 ./autogen.sh
 configure --enable-static --disable-shared
@@ -285,9 +293,9 @@ make
 make install
 
 building libharfbuzz
-configure --disable-shared --enable-static
-make
-make install
+meson --default-library=static build
+ninja -C build
+ninja -C build install
 
 building libfribidi
 meson -Ddocs=false --default-library=static build
@@ -365,14 +373,6 @@ building libspeex
 configure --disable-shared
 make
 make install
-
-building libbrotli
-mkdir -p out && cd out
-cmake -DBUILD_SHARED_LIBS:bool=off ..
-make
-make install
-ln -sf "${TARGET_DIR}/lib64/libbrotlidec-static.a" "${TARGET_DIR}/lib64/libbrotlidec.a"
-ln -sf "${TARGET_DIR}/lib64/libbrotlicommon-static.a" "${TARGET_DIR}/lib64/libbrotlicommon.a"
 
 building libopencore-amr
 configure --enable-static --disable-shared

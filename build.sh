@@ -8,30 +8,30 @@ RED="\e[1;31m"
 GREEN="\e[1;32m"
 RESET="\e[0m"
 
-verbose=false
+# Set default values of the options
 download_only=false
 
-while getopts 'vd' OPTION
+# Parse the options
+while getopts 'd' OPTION
 do
   case $OPTION in
-  v)
-      verbose=true
-      ;;
   d)
       download_only=true
       ;;
   ?)
-      printf "Usage: %s: [-v] [-d]\n" "$(basename "$0")" >&2
-      exit 2
+      printf "Usage: %s: [-d]\n" "$(basename "$0")" >&2
+      exit 1
       ;;
   esac
 done
 shift $((OPTIND - 1))
 
+# Set up the environment
 cd "$(dirname "$0")"
 ENV_ROOT=$(pwd)
 . env.sh
 
+# Create additional directories
 mkdir -p "$BUILD_DIR" "$TARGET_DIR" "$DOWNLOAD_DIR" "$BIN_DIR"
 
 # Download and extract the archive, renaming if necessary
@@ -44,30 +44,42 @@ download() {
   archive_path="${DOWNLOAD_DIR}/${archive}"
   builddir_path="${BUILD_DIR}/${filename}"
 
+  unpack() {
+    echo -e "${GREEN}> Unpacking $archive...${RESET}"
+    mkdir -p "${builddir_path}"
+    if [ "$(tar -t --exclude='*/*' -f "${archive_path}" | wc -l)" -le 1 ]; then
+      tar --strip-components=1 --overwrite -xf "${archive_path}" -C "${builddir_path}"
+    else
+      tar --overwrite -xf "${archive_path}" -C "${builddir_path}"
+    fi
+  }
+
   _download() {
-      echo -e "${GREEN}> Downloading $url...${RESET}"
-      if ! curl -sfLm 600 -o "${archive_path}" "$url"; then
-        echo -e "Couldn't download the file.\n"
-        exit 1
-      fi
+    echo -e "${GREEN}> Downloading $url...${RESET}"
+    if ! curl -sfLm 600 -o "${archive_path}" "$url"; then
+      echo -e "${RED}> Couldn't download the file. Exiting.${RESET}\n"
+      exit 2
+    fi
+    if [ -n "${checksum}" ]; then
       echo -e "${GREEN}> Checking the MD5 checksum of $archive...${RESET}"
       if [ "$(md5sum "${archive_path}" | cut -f 1 -d ' ')" != "$checksum" ]; then
-        echo -e "${RED}Wrong checksum. Exiting.${RESET}"
-        exit 1
+        echo -e "${RED}> Wrong checksum. Exiting.${RESET}"
+        exit 3
       fi
-      echo -e "${GREEN}> Unpacking $archive...${RESET}"
-      mkdir -p "${builddir_path}"
-      tar --strip-components=1 --overwrite -xf "${archive_path}" -C "${builddir_path}"
+    fi
+    unpack
   }
 
   if [ -f "${archive_path}" ]; then
-    echo -e "${GREEN}> Checking the MD5 checksum of $archive...${RESET}"
-    if [ "$(md5sum "${archive_path}" | cut -f 1 -d ' ')" != "$checksum" ]; then
-      _download
+    if [ -n "${checksum}" ]; then
+      echo -e "${GREEN}> Checking the MD5 checksum of $archive...${RESET}"
+      if [ "$(md5sum "${archive_path}" | cut -f 1 -d ' ')" != "$checksum" ]; then
+        _download
+      else
+        unpack
+      fi
     else
-      echo -e "${GREEN}> Unpacking $archive...${RESET}"
-      mkdir -p "${builddir_path}"
-      tar --strip-components=1 --overwrite -xf "${archive_path}" -C "${builddir_path}"
+      unpack
     fi
   else
     _download
@@ -80,11 +92,6 @@ download \
   "https://github.com/openssl/openssl/archive/openssl-3.0.5.tar.gz" \
   "" \
   "22733b9187548b735201fd9f7aa12e71"
-
-download \
-  "https://github.com/madler/zlib/archive/v1.2.12.tar.gz" \
-  "zlib-1.2.12" \
-  "db5b7326d4e0dbcbd1981b640d495c9b"
 
 download \
   "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.tar.gz" \
@@ -101,7 +108,6 @@ download \
   "libfdk-aac-2.0.2" \
   "b15f56aebd0b4cfe8532b24ccfd8d11e"
 
-# libass dependency
 download \
   "https://www.freedesktop.org/software/harfbuzz/release/harfbuzz-2.6.7.tar.xz" \
   "libharfbuzz-2.6.7" \
@@ -184,17 +190,17 @@ download \
 
 download \
   "https://download.savannah.gnu.org/releases/freetype/freetype-2.12.1.tar.xz" \
-  "" \
+  "libfreetype-2.12.1" \
   "7f7cd7c706d8e402354305c1c59e3ff2"
 
 download \
   "https://sourceforge.net/projects/opencore-amr/files/opencore-amr/opencore-amr-0.1.5.tar.gz" \
-  "" \
+  "libopencore-amr-0.1.5" \
   "e0798587b91411cc092aa73091a97dfc"
 
 download \
   "https://sourceforge.net/projects/opencore-amr/files/vo-amrwbenc/vo-amrwbenc-0.1.3.tar.gz" \
-  "" \
+  "libvo-amrwbenc-0.1.3" \
   "f63bb92bde0b1583cb3cb344c12922e0"
 
 download \
@@ -204,8 +210,23 @@ download \
 
 download \
   "https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.gz" \
-  "" \
+  "libxvid-core-1.3.7" \
   "5c6c19324608ac491485dbb27d4da517"
+
+download \
+  "https://aomedia.googlesource.com/aom/+archive/v3.4.0.tar.gz" \
+  "libaom-3.4.0" \
+  ""
+
+download \
+  "https://downloads.videolan.org/pub/videolan/dav1d/1.0.0/dav1d-1.0.0.tar.xz" \
+  "libdav1d-1.0.0" \
+  "424548396e45406fe2f395e248b38121"
+
+download \
+  "https://github.com/Netflix/vmaf/archive/v2.3.1.tar.gz" \
+  "libvmaf-2.3.1" \
+  "be40a256a3b739ffc2119b45f919d6bf"
 
 download \
   "https://www.ffmpeg.org/releases/ffmpeg-5.1.tar.xz" \
@@ -217,39 +238,25 @@ download \
 # Print the message about what library is
 # being built and enter its build directory
 building() {
-  echo -e "\n${GREEN}> Building $1...${RESET}\n"
+  echo -e "${GREEN}> Building $1...${RESET}"
   cd "$BUILD_DIR"/"$1"*
 }
 
-# Override `make` calls
-if [ $verbose = true ]; then
-  make() {
-    command make "$@"
-  }
-else
-  make() {
-    command make "$@" >/dev/null
-  }
-fi
-
 # Override `configure` calls
-if [ $verbose = true ]; then
-  configure() {
-    ./configure --prefix="$TARGET_DIR" "$@"
-  }
-else
-  configure() {
-    ./configure --prefix="$TARGET_DIR" "$@" >/dev/null
-  }
-fi
+configure() {
+  ./configure --prefix="$TARGET_DIR" "$@"
+}
+# Override `cmake` calls
+cmake() {
+  command cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" "$@"
+}
+# Override `meson` calls
+meson() {
+  command meson -Dprefix="$TARGET_DIR" --backend=ninja "$@"
+}
 
 building openssl
 ./config --prefix="$TARGET_DIR"
-make
-make install
-
-building zlib
-configure
 make
 make install
 
@@ -260,7 +267,7 @@ make install
 
 building libx265
 cd build/linux
-cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DENABLE_SHARED:BOOL=OFF -DSTATIC_LINK_CRT:BOOL=ON -DENABLE_CLI:BOOL=OFF ../../source
+cmake -DENABLE_SHARED:BOOL=OFF -DSTATIC_LINK_CRT:BOOL=ON -DENABLE_CLI:BOOL=OFF ../../source
 sed -i 's/-lgcc_s/-lgcc_eh/g' x265.pc
 make
 make install
@@ -271,13 +278,19 @@ configure --disable-shared
 make
 make install
 
+building libfreetype
+./autogen.sh
+configure --enable-static --disable-shared
+make
+make install
+
 building libharfbuzz
 configure --disable-shared --enable-static
 make
 make install
 
 building libfribidi
-meson -Dprefix="$TARGET_DIR" -Ddocs=false --default-library=static --backend=ninja build
+meson -Ddocs=false --default-library=static build
 ninja -C build
 ninja -C build install
 
@@ -293,9 +306,7 @@ make
 make install
 
 building libmp3lame
-# The lame build script does not recognize aarch64, so need to set it manually
-uname -a | grep -q 'aarch64' && lame_build_target="--build=arm-linux" || lame_build_target=''
-configure --enable-nasm --disable-shared "$lame_build_target"
+configure --enable-nasm --disable-shared
 make
 make install
 
@@ -311,17 +322,17 @@ make
 make install
 
 building libsoxr
-cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off -DWITH_OPENMP:bool=off -DBUILD_TESTS:bool=off
+cmake -DBUILD_SHARED_LIBS:bool=off -DWITH_OPENMP:bool=off -DBUILD_TESTS:bool=off
 make
 make install
 
 building libvidstab
-cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off
+cmake -DBUILD_SHARED_LIBS:bool=off
 make
 make install
 
 building libopenjpeg
-cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off
+cmake -DBUILD_SHARED_LIBS:bool=off
 make
 make install
 
@@ -357,23 +368,18 @@ make install
 
 building libbrotli
 mkdir -p out && cd out
-cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" -DBUILD_SHARED_LIBS:bool=off ..
-cmake --build . --config Release --target install
+cmake -DBUILD_SHARED_LIBS:bool=off ..
+make
+make install
 ln -sf "${TARGET_DIR}/lib64/libbrotlidec-static.a" "${TARGET_DIR}/lib64/libbrotlidec.a"
 ln -sf "${TARGET_DIR}/lib64/libbrotlicommon-static.a" "${TARGET_DIR}/lib64/libbrotlicommon.a"
 
-building freetype
-./autogen.sh
+building libopencore-amr
 configure --enable-static --disable-shared
 make
 make install
 
-building opencore-amr
-configure --enable-static --disable-shared
-make
-make install
-
-building vo-amrwbenc
+building libvo-amrwbenc
 configure --enable-static --disable-shared
 make
 make install
@@ -384,11 +390,28 @@ configure --enable-static --disable-shared --disable-examples
 make
 make install
 
-building xvidcore
+building libxvid-core
 cd build/generic
 configure
 make
 make install
+
+building libaom
+mkdir -p out && cd out
+cmake -DBUILD_SHARED_LIBS:bool=off ..
+make
+make install
+
+building libdav1d
+meson --default-library=static build
+ninja -C build
+ninja -C build install
+
+building libvmaf
+cd libvmaf
+meson --default-library=static build
+ninja -C build
+ninja -C build install
 
 building ffmpeg
 FEATURES=( \
@@ -396,7 +419,10 @@ FEATURES=( \
   --enable-fontconfig \
   --enable-frei0r \
   --enable-gpl \
+  --enable-gray \
+  --enable-libaom \
   --enable-libass \
+  --enable-libdav1d \
   --enable-libfdk-aac \
   --enable-libfreetype \
   --enable-libfribidi \
@@ -409,12 +435,14 @@ FEATURES=( \
   --enable-libspeex \
   --enable-libtheora \
   --enable-libvidstab \
+  --enable-libvmaf \
   --enable-libvo-amrwbenc \
   --enable-libvorbis \
   --enable-libvpx \
   --enable-libwebp \
   --enable-libx264 \
   --enable-libx265 \
+  --enable-libxml2 \
   --enable-libxvid \
   --enable-libzimg \
   --enable-nonfree \
@@ -430,6 +458,7 @@ if ! \
   --extra-ldexeflags="-static" \
   --extra-ldflags="-L$TARGET_DIR/lib" \
   --extra-libs="-lpthread -lm -lz" \
+  --ld=g++ \
   --pkg-config-flags="--static"
 then
   cat ffbuild/config.log

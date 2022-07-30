@@ -12,7 +12,7 @@ jobs:
     - name: Build the image
       run: podman build --squash-all -t ffmpeg-static .
     - name: Compile FFmpeg
-      run: podman run -v .:/ffmpeg-static:Z ffmpeg-static -v
+      run: podman run -v .:/ffmpeg-static:Z ffmpeg-static
     - name: Check the binaries
       run: |
         ./bin/ffmpeg -version

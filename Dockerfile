@@ -9,11 +9,11 @@ RUN dnf -y install \
     automake \
     byacc \
     bzip2 \
+    bzip2-static \
     cmake \
     curl \
     diffutils \
     expat-static \
-    freetype-devel \
     frei0r-devel \
     gcc \
     gcc-c++ \
@@ -21,18 +21,19 @@ RUN dnf -y install \
     glib2-static \
     glibc-static \
     gperf \
+    libpng-static \
     libstdc++-static \
     libtool \
+    libxml2-devel \
+    libxml2-static \
     meson \
     nasm \
     ninja-build \
-    opencore-amr-devel \
-    openjpeg2-devel \
     pcre-static \
     perl \
-    vo-amrwbenc-devel \
     which \
     xz \
+    xz-static \
     yasm \
     zlib-static
 

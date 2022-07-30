@@ -1,0 +1,52 @@
+name: Build & Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "FFmpeg version"
+        required: true
+
+env:
+  VERSION: ${{ github.event.inputs.version }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v3
+    - name: Build the image
+      run: podman build --squash-all -t ffmpeg-static .
+    - name: Compile FFmpeg
+      run: podman run -v .:/ffmpeg-static:Z ffmpeg-static
+    - name: Check the binaries
+      run: |
+        ./bin/ffmpeg -version
+        ./bin/ffprobe -version
+        ldd bin/ffmpeg || true
+        ldd bin/ffprobe || true
+        chmod +x bin/ffmpeg
+        chmod +x bin/ffprobe
+    - name: Delete the previous release (if exists)
+      run: .github/scripts/delete_release.bash
+      env:
+        GH_TOKEN: ${{ secrets.GH_PAT }}
+        GH_REPO: https://api.github.com/repos/paveloom-f/ffmpeg-static/releases
+        TAG: v${{ env.VERSION }}
+    - name: Create a release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: FFmpeg ${{ env.VERSION }}
+        body: Static build of FFmpeg ${{ env.VERSION }}
+        tag_name: v${{ env.VERSION }}
+        files: |
+          bin/ffmpeg
+          bin/ffprobe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

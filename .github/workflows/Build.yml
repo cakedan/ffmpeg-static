@@ -2,13 +2,17 @@ name: Build
 
 on: push
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout source code
-      uses: actions/checkout@v2
+    - name: Checkout the repository
+      uses: actions/checkout@v3
     - name: Build the image
       run: podman build --squash-all -t ffmpeg-static .
     - name: Compile FFmpeg

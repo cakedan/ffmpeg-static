@@ -229,6 +229,106 @@ download \
   "be40a256a3b739ffc2119b45f919d6bf"
 
 download \
+  "https://github.com/AviSynth/AviSynthPlus/archive/v3.7.2.tar.gz" \
+  "avisynthplus-3.7.2" \
+  "cac7ab4e64af4caa8c10aa14e796331f"
+
+download \
+  "https://github.com/mm2/Little-CMS/archive/lcms2.13.1.tar.gz" \
+  "lcms-2.13.1" \
+  "4d07798d8d5826804403d4acb5c93f16"
+
+download \
+  "https://github.com/nkoriyama/aribb24/archive/v1.0.3.tar.gz" \
+  "libaribb24-1.0.3" \
+  "5ef0a6d1d72f294666ee1489b7ebb8c5"
+
+download \
+  "https://github.com/Distrotech/libiec61883/archive/v1.2.0.tar.gz" \
+  "libiec61883-1.2.0" \
+  "6d76dc23cd90611919d8c6d904797ee2"
+
+download \
+  "https://github.com/festvox/flite/archive/v2.2.tar.gz" \
+  "libflite-2.2" \
+  "31f84ece0078906780f07942c0cd978c"
+
+download \
+  "https://github.com/ultravideo/kvazaar/archive//v2.1.0.tar.gz" \
+  "libkvazaar-2.1.0" \
+  "3a133dbb009605748606f279615378e4"
+
+download \
+  "https://sourceforge.net/projects/modplug-xmms/files/libmodplug/0.8.9.0/libmodplug-0.8.9.0.tar.gz" \
+  "" \
+  "5ba16981e6515975e9a68a58d5ba69d1"
+
+download \
+  "https://github.com/hoene/libmysofa/archive/v1.2.1.tar.gz" \
+  "libmysofa-1.2.1" \
+  "de55b79f2687c824f2134e677f437601"
+
+download \
+  "https://github.com/cisco/openh264/archive/v2.2.0.tar.gz" \
+  "libopenh264-2.2.0" \
+  "19d2820c775abfea141d93779f958a9b"
+
+download \
+  "https://github.com/alanxz/rabbitmq-c/archive/v0.11.0.tar.gz" \
+  "librabbitmq-0.11.0" \
+  "e7d9896577aea6351811d7c1d7f0a68a"
+
+download \
+  "https://breakfastquay.com/files/releases/rubberband-3.0.0.tar.bz2" \
+  "librubberband-3.0.0" \
+  "30e220e8ca2202d52c58714793f93c23"
+
+download \
+  "https://github.com/toots/shine/archive/3.1.1.tar.gz" \
+  "libshine-3.1.1" \
+  "ff41cb139c25470f2d9c9acc9f97cc8d"
+
+download \
+  "https://github.com/toots/shine/archive/3.1.1.tar.gz" \
+  "libshine-3.1.1" \
+  "ff41cb139c25470f2d9c9acc9f97cc8d"
+
+download \
+  "https://github.com/haivision/srt/archive/v1.5.0.tar.gz" \
+  "libsrt-1.5.0" \
+  "339598e9674d8ed4507d20e8fad4a2d2"
+
+download \
+  "https://github.com/DanBloomberg/leptonica/archive/1.82.0.tar.gz" \
+  "libleptonica-1.82.0" \
+  "39f0befbd53939950beb32d81b3542cf"
+
+download \
+  "https://github.com/tesseract-ocr/tesseract/archive/5.2.0.tar.gz" \
+  "libtesseract-5.2.0" \
+  "1f289de81512bca5ab9ec07d173cb7b3"
+
+download \
+  "https://sourceforge.net/projects/twolame/files/twolame/0.4.0/twolame-0.4.0.tar.gz" \
+  "libtwolame-0.4.0" \
+  "400c164ed096c7aea82bcf8edcd3f6f9"
+
+download \
+  "https://sourceforge.net/projects/zapping/files/zvbi/0.2.35/zvbi-0.2.35.tar.bz2" \
+  "libzvbi-0.2.35" \
+  "95e53eb208c65ba6667fd4341455fa27"
+
+download \
+  "https://ftp.gnu.org/gnu/libcdio/libcdio-2.1.0.tar.bz2" \
+  "libcdio-gnu-2.1.0" \
+  "aa7629e8f73662a762f64c444b901055"
+
+download \
+  "https://github.com/rocky/libcdio-paranoia/archive/release-10.2+2.0.1.tar.gz" \
+  "libcdio-paranoia-10.2+2.0.1" \
+  "13aa9153d14a0d917c5bdac6e9bf8664"
+
+download \
   "https://www.ffmpeg.org/releases/ffmpeg-5.1.tar.xz" \
   "" \
   "efd690ec82772073fd9d3ae83ca615da"
@@ -252,7 +352,7 @@ cmake() {
 }
 # Override `meson` calls
 meson() {
-  command meson -Dprefix="$TARGET_DIR" --backend=ninja "$@"
+  command meson -Dprefix="$TARGET_DIR" --default-library=static --backend=ninja "$@"
 }
 
 building openssl
@@ -293,12 +393,12 @@ make
 make install
 
 building libharfbuzz
-meson --default-library=static build
+meson build
 ninja -C build
 ninja -C build install
 
 building libfribidi
-meson -Ddocs=false --default-library=static build
+meson -Ddocs=false build
 ninja -C build
 ninja -C build install
 
@@ -403,37 +503,152 @@ make
 make install
 
 building libdav1d
-meson --default-library=static build
+meson build
 ninja -C build
 ninja -C build install
 
 building libvmaf
 cd libvmaf
-meson --default-library=static build
+meson build
 ninja -C build
 ninja -C build install
 
+building avisynthplus
+mkdir -p out && cd out
+cmake -DBUILD_SHARED_LIBS:bool=off ..
+make
+make install
+
+building lcms
+./autogen.sh
+configure --enable-static --disable-shared
+make
+make install
+
+building libaribb24
+./bootstrap
+configure --enable-static --disable-shared
+make
+make install
+
+building libflite
+configure --disable-shared
+make
+make install
+
+building libkvazaar
+./autogen.sh
+configure --enable-static --disable-shared
+make
+make install
+
+building libmodplug
+configure --enable-static --disable-shared
+make
+make install
+
+building libmysofa
+cmake -DBUILD_SHARED_LIBS:bool=off
+make
+make install
+
+building libopenh264
+meson build
+ninja -C build
+ninja -C build install
+
+building librabbitmq
+cmake -DBUILD_SHARED_LIBS:bool=off
+make
+make install
+
+building librubberband
+meson build
+ninja -C build
+ninja -C build install
+
+building libshine
+./bootstrap
+configure --enable-static --disable-shared
+make
+make install
+
+building libsrt
+cmake -DENABLE_STATIC:bool=on
+sed -i 's/-lgcc_s/-lgcc_eh/g' srt.pc
+make
+make install
+
+building libleptonica
+./autogen.sh
+configure --enable-static --disable-shared
+make
+make install
+
+building libtesseract
+./autogen.sh
+configure --enable-static --disable-shared --disable-openmp
+make
+make install
+
+building libtwolame
+configure --enable-static --disable-shared
+make
+make install
+
+building libzvbi
+configure --enable-static --disable-shared
+make
+make install
+
+building libcdio-gnu
+configure --enable-static --disable-shared
+make
+make install
+
+building libcdio-paranoia
+./autogen.sh
+configure --enable-static --disable-shared
+make
+make install
+
 building ffmpeg
 FEATURES=( \
+  --enable-avisynth \
   --enable-ffplay \
   --enable-fontconfig \
   --enable-frei0r \
   --enable-gpl \
   --enable-gray \
+  --enable-lcms2 \
   --enable-libaom \
+  --enable-libaribb24 \
   --enable-libass \
+  --enable-libcdio \
   --enable-libdav1d \
   --enable-libfdk-aac \
+  --enable-libflite \
+  --enable-libfontconfig \
   --enable-libfreetype \
   --enable-libfribidi \
+  --enable-libkvazaar \
+  --enable-libmodplug \
   --enable-libmp3lame \
+  --enable-libmysofa \
   --enable-libopencore-amrnb \
   --enable-libopencore-amrwb \
+  --enable-libopenh264 \
   --enable-libopenjpeg \
   --enable-libopus \
+  --enable-librabbitmq \
+  --enable-librubberband \
+  --enable-libshine \
   --enable-libsoxr \
   --enable-libspeex \
+  --enable-libsrt \
+  --enable-libtesseract \
   --enable-libtheora \
+  --enable-libtwolame \
   --enable-libvidstab \
   --enable-libvmaf \
   --enable-libvo-amrwbenc \
@@ -445,6 +660,8 @@ FEATURES=( \
   --enable-libxml2 \
   --enable-libxvid \
   --enable-libzimg \
+  --enable-libzvbi \
+  --enable-lto \
   --enable-nonfree \
   --enable-openssl \
   --enable-pic \

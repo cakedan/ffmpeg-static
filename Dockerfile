@@ -5,6 +5,7 @@ RUN dnf -y install \
     https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-"$(rpm -E %fedora)".noarch.rpm
 
 RUN dnf -y install \
+    CUnit-devel \
     autoconf \
     automake \
     byacc \

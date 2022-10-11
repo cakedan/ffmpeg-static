@@ -1,4 +1,4 @@
-FROM fedora:36
+FROM registry.fedoraproject.org/fedora:36
 
 RUN dnf -y install \
     https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-"$(rpm -E %fedora)".noarch.rpm \
@@ -11,6 +11,7 @@ RUN dnf -y install \
     byacc \
     bzip2 \
     bzip2-static \
+    cargo \
     cmake \
     curl \
     diffutils \
@@ -37,6 +38,8 @@ RUN dnf -y install \
     xz-static \
     yasm \
     zlib-static
+
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 VOLUME /ffmpeg-static
 WORKDIR /ffmpeg-static

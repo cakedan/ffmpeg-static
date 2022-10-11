@@ -19,17 +19,43 @@ Options:
 
 The binaries will be created in the `./bin` directory.
 
+You can delete the image after you're done with
+
+```bash
+podman rmi ffmpeg-static
+```
+
 ## Debug
 
-On the top-level of the project, run:
+Start a Podman container in the background, then enter it with a shell:
+
+```bash
+podman run -itd -v .:/ffmpeg-static:Z --entrypoint=/bin/bash --name ffmpeg-static ffmpeg-static
+podman exec -it ffmpeg-static /bin/bash
+```
+
+On the top-level of the project, run
 
 ```bash
 . env.sh
 ```
 
-You can then enter the source folders and make the compilation yourself
+To download only dependencies, run
+
+```bash
+./build.sh -d
+```
+
+You can then enter the source folders and make the compilation yourself:
 
 ```bash
 cd build/ffmpeg-*
 ./configure --prefix=$TARGET_DIR #...
+```
+
+Don't forget to delete the container after you're done:
+
+```bash
+podman stop ffmpeg-static
+podman rm ffmpeg-static
 ```

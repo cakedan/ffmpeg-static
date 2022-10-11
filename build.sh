@@ -94,9 +94,9 @@ download \
   "22733b9187548b735201fd9f7aa12e71"
 
 download \
-  "https://code.videolan.org/videolan/x264/-/archive/stable/x264-stable.tar.gz" \
-  "libx264-stable" \
-  "57bfbd990bea805b44c4785e64c6372f"
+  "https://code.videolan.org/videolan/x264/-/archive/baee400fa9ced6f5481a728138fed6e867b0ff7f/x264-baee400fa9ced6f5481a728138fed6e867b0ff7f.tar.gz" \
+  "libx264-baee400f" \
+  "33d20c2955efb3352b32cfbd4fe966e8"
 
 download \
   "http://download.openpkg.org/components/cache/x265/x265_3.4.tar.gz" \
@@ -109,9 +109,9 @@ download \
   "b15f56aebd0b4cfe8532b24ccfd8d11e"
 
 download \
-  "https://github.com/harfbuzz/harfbuzz/archive/5.0.1.tar.gz" \
-  "libharfbuzz-5.0.1" \
-  "a0c81d6f16e5018f83a709eb50f934a9"
+  "https://github.com/harfbuzz/harfbuzz/archive/5.3.0.tar.gz" \
+  "libharfbuzz-5.3.0" \
+  "485af70c103ecab6c4c639cc62d813ba"
 
 download \
   "https://github.com/fribidi/fribidi/archive/v1.0.12.tar.gz" \
@@ -159,9 +159,9 @@ download \
   "5cbb822a1203dd75b85639da4f4ecaab"
 
 download \
-  "https://github.com/webmproject/libwebp/archive/v1.2.3.tar.gz" \
-  "libwebp-1.2.3" \
-  "a9d3c93923ab0e5eab649a965b7b2bcd"
+  "https://github.com/webmproject/libwebp/archive/v1.2.4.tar.gz" \
+  "libwebp-1.2.4" \
+  "4f08244f88a39816c3e0719ca16c7a92"
 
 download \
   "https://github.com/xiph/vorbis/archive/v1.3.7.tar.gz" \
@@ -329,6 +329,16 @@ download \
   "13aa9153d14a0d917c5bdac6e9bf8664"
 
 download \
+  "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v1.2.1/SVT-AV1-v1.2.1.tar.gz" \
+  "libsvtav1-1.2.1" \
+  "79b9e1262a7e999ab8b2e4cd5353b8c2"
+
+download \
+  "https://github.com/xiph/rav1e/archive/refs/tags/p20221004.tar.gz" \
+  "librav1e-p20221004" \
+  "3c0bbe422438ae85f7d980654ff45211"
+
+download \
   "https://www.ffmpeg.org/releases/ffmpeg-5.1.tar.xz" \
   "" \
   "efd690ec82772073fd9d3ae83ca615da"
@@ -349,6 +359,10 @@ configure() {
 # Override `cmake` calls
 cmake() {
   command cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$TARGET_DIR" "$@"
+}
+# Override `make` calls
+make() {
+  command make -j "$(nproc)" "$@"
 }
 # Override `meson` calls
 meson() {
@@ -612,6 +626,17 @@ configure --enable-static --disable-shared
 make
 make install
 
+building libsvtav1
+cd Build
+cmake -DBUILD_SHARED_LIBS:bool=off ..
+make
+make install
+
+building librav1e
+cargo install cargo-c
+cargo cinstall --release --prefix="$TARGET_DIR"
+sed -i 's/-lgcc_s/-lgcc_eh/g' "$TARGET_DIR/lib/pkgconfig/rav1e.pc"
+
 building ffmpeg
 FEATURES=( \
   --enable-avisynth \
@@ -641,11 +666,13 @@ FEATURES=( \
   --enable-libopenjpeg \
   --enable-libopus \
   --enable-librabbitmq \
+  --enable-librav1e \
   --enable-librubberband \
   --enable-libshine \
   --enable-libsoxr \
   --enable-libspeex \
   --enable-libsrt \
+  --enable-libsvtav1 \
   --enable-libtesseract \
   --enable-libtheora \
   --enable-libtwolame \

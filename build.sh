@@ -99,9 +99,9 @@ download \
   "33d20c2955efb3352b32cfbd4fe966e8"
 
 download \
-  "http://download.openpkg.org/components/cache/x265/x265_3.4.tar.gz" \
-  "libx265-3.4" \
-  "e37b91c1c114f8815a3f46f039fe79b5"
+  "https://bitbucket.org/multicoreware/x265_git/get/f0c1022b6be121a753ff02853fbe33da71988656.tar.gz" \
+  "libx265-3.5" \
+  "bb92a1fdcb4f4530c3fc12de3452d7fb"
 
 download \
   "https://github.com/mstorsjo/fdk-aac/archive/v2.0.2.tar.gz" \
@@ -381,9 +381,10 @@ make install
 
 building libx265
 cd build/linux
-cmake -DENABLE_SHARED:BOOL=OFF -DSTATIC_LINK_CRT:BOOL=ON -DENABLE_CLI:BOOL=OFF ../../source
+sed -i "/^cmake/ s|$| -DCMAKE_ASM_NASM_FLAGS=-w-macro-params-legacy -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=\"${TARGET_DIR}\"|" multilib.sh
+MAKEFLAGS="-j $(nproc)" ./multilib.sh
+cd 8bit
 sed -i 's/-lgcc_s/-lgcc_eh/g' x265.pc
-make
 make install
 
 building libfdk-aac

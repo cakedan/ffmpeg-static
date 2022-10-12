@@ -37,7 +37,7 @@ jobs:
       run: .github/scripts/delete_release.bash
       env:
         GH_TOKEN: ${{ secrets.GH_PAT }}
-        GH_REPO: https://api.github.com/repos/paveloom-f/ffmpeg-static/releases
+        GH_REPO: https://api.github.com/repos/paveloom-f/ffmpeg-static
         TAG: v${{ env.VERSION }}
     - name: Create a release
       uses: softprops/action-gh-release@v1

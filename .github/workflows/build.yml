@@ -1,0 +1,68 @@
+name: Build
+on:
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: FFmpeg version
+        required: true
+env:
+  VERSION: ${{ github.event.inputs.version }}
+defaults:
+  run:
+    shell: bash
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare cache paths
+        run: |
+          mkdir -p ~/cache/dnf
+      - name: Restore DNF's cache
+        uses: actions/cache@v2
+        with:
+          key: dnf-cache
+          path: |
+            ~/cache/dnf
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+      - name: Build the image
+        run: |
+          podman build \
+            --squash-all \
+            -v /home/runner/cache/dnf:/cache/dnf:Z \
+            -t ffmpeg-static .
+      - name: Compile FFmpeg
+        run: podman run -v .:/ffmpeg-static:Z ffmpeg-static
+      - name: Check the binaries
+        run: |
+          ./bin/ffmpeg -version
+          ./bin/ffprobe -version
+          ./bin/ffplay -version
+          ldd bin/ffmpeg || true
+          ldd bin/ffplay || true
+          ldd bin/ffprobe || true
+          chmod +x bin/ffmpeg
+          chmod +x bin/ffplay
+          chmod +x bin/ffprobe
+      - name: Delete the previous release (if exists)
+        if: github.event_name == 'workflow_dispatch'
+        run: .github/scripts/delete_release.bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_REPO: https://api.github.com/repos/paveloom-f/ffmpeg-static
+          TAG: v${{ env.VERSION }}
+      - name: Create a release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v1
+        with:
+          name: FFmpeg ${{ env.VERSION }}
+          body: Static build of FFmpeg ${{ env.VERSION }}
+          tag_name: v${{ env.VERSION }}
+          files: |
+            bin/ffmpeg
+            bin/ffplay
+            bin/ffprobe

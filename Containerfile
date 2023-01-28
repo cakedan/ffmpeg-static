@@ -1,17 +1,26 @@
-FROM registry.fedoraproject.org/fedora:36
+FROM registry.fedoraproject.org/fedora:latest
 
-RUN dnf -y install \
+RUN \
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+    sh -s -- -y --default-toolchain none --no-modify-path;
+
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+RUN \
+  echo "keepcache=1" | sudo tee -a /etc/dnf/dnf.conf >/dev/null; \
+  echo "cachedir=/cache/dnf" | sudo tee -a /etc/dnf/dnf.conf >/dev/null; \
+  dnf -y update; \
+  dnf -y install \
     https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-"$(rpm -E %fedora)".noarch.rpm \
-    https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-"$(rpm -E %fedora)".noarch.rpm
-
-RUN dnf -y install \
+    https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-"$(rpm -E %fedora)".noarch.rpm; \
+  dnf -y install \
     CUnit-devel \
+    SDL2-static \
     autoconf \
     automake \
     byacc \
     bzip2 \
     bzip2-static \
-    cargo \
     cmake \
     curl \
     diffutils \
@@ -38,8 +47,6 @@ RUN dnf -y install \
     xz-static \
     yasm \
     zlib-static
-
-ENV PATH="/root/.cargo/bin:${PATH}"
 
 VOLUME /ffmpeg-static
 WORKDIR /ffmpeg-static

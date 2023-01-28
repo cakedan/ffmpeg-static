@@ -634,6 +634,7 @@ make
 make install
 
 building librav1e
+rustup default stable
 cargo install cargo-c
 cargo cinstall --release --prefix="$TARGET_DIR"
 sed -i 's/-lgcc_s/-lgcc_eh/g' "$TARGET_DIR/lib/pkgconfig/rav1e.pc"

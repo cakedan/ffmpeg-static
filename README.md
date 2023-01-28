@@ -10,7 +10,8 @@ Git mirrors:
 ## Build
 
 ```bash
-podman build --squash-all -t ffmpeg-static .
+mkdir -p cache/dnf
+podman build --squash-all -v $(pwd)/cache/dnf:/cache/dnf:Z -t ffmpeg-static .
 podman run -it --rm -v .:/ffmpeg-static:Z --name ffmpeg-static ffmpeg-static [-d]
 ```
 
@@ -50,12 +51,11 @@ You can then enter the source folders and make the compilation yourself:
 
 ```bash
 cd build/ffmpeg-*
-./configure --prefix=$TARGET_DIR #...
+./configure --prefix=$TARGET_DIR # <...>
 ```
 
 Don't forget to delete the container after you're done:
 
 ```bash
-podman stop ffmpeg-static
-podman rm ffmpeg-static
+podman stop -t 1 ffmpeg-static && podman rm ffmpeg-static
 ```

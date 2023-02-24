@@ -109,8 +109,8 @@ download \
   "b15f56aebd0b4cfe8532b24ccfd8d11e"
 
 download \
-  "https://github.com/harfbuzz/harfbuzz/archive/5.3.0.tar.gz" \
-  "libharfbuzz-5.3.0" \
+  "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/7.0.1.tar.gz" \
+  "libharfbuzz-7.0.1" \
   "485af70c103ecab6c4c639cc62d813ba"
 
 download \

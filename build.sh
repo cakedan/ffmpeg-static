@@ -219,9 +219,9 @@ download \
   ""
 
 download \
-  "https://downloads.videolan.org/pub/videolan/dav1d/1.0.0/dav1d-1.0.0.tar.xz" \
-  "libdav1d-1.0.0" \
-  "424548396e45406fe2f395e248b38121"
+  "https://code.videolan.org/videolan/dav1d/-/archive/1.1.0/dav1d-1.1.0.tar.gz" \
+  "libdav1d-1.1.0" \
+  ""
 
 download \
   "https://github.com/Netflix/vmaf/archive/v2.3.1.tar.gz" \
